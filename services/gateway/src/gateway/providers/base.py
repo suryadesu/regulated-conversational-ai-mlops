@@ -50,10 +50,29 @@ class ProviderClient(Protocol):
 def make_provider(settings: Settings) -> ProviderClient:
     """Build the provider adapter selected by settings.provider.
 
+    Adapters are imported lazily: they import this module's models, so a
+    top-level import here would be circular.
+
     Args:
         settings: Settings — runtime configuration selecting and parameterizing the adapter.
 
     Returns:
         ProviderClient — an adapter satisfying the provider contract.
     """
-    raise NotImplementedError
+    if settings.provider == "openai_compat":
+        from gateway.providers.openai_compat import OpenAICompatProvider
+
+        return OpenAICompatProvider(
+            base_url=settings.provider_base_url,
+            api_key=settings.provider_api_key,
+            timeout_s=settings.request_timeout_s,
+        )
+    if settings.provider == "bedrock":
+        from gateway.providers.bedrock import BedrockProvider
+
+        return BedrockProvider(
+            model_id=settings.bedrock_model_id,
+            endpoint_url=settings.bedrock_endpoint_url,
+            timeout_s=settings.request_timeout_s,
+        )
+    raise ValueError(f"unknown provider: {settings.provider}")

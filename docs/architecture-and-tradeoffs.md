@@ -18,6 +18,11 @@ banking environment.
   fault bands so tests can force exact failure counts; a canned-response cache miss falls back to
   a hash-tagged echo (`[stub:<sha256[:16]>] Acknowledged: ...`) instead of raising, so every
   prompt has a stable, assertable reply without pre-authoring.
+- **Adapter seams are test-injection points, not abstractions.** `OpenAICompatProvider` takes an
+  optional httpx transport (MockTransport in tests, real network in production); Bedrock tests use
+  botocore's `Stubber` so request/response shapes are validated against the real service model.
+  Bedrock's `ConverseStream` is drained inside the offloaded thread — bounded token streams don't
+  justify bridging a sync iterator across the event loop live.
 - **SSE graceful drain choreography**: `preStop: sleep 10` (endpoint-slice propagation) →
   readiness flips 503 while liveness stays 200 → in-flight counter bounds drain at 160 s →
   `terminationGracePeriodSeconds: 180`. Invariant: a rolling deploy never cuts an open stream.
