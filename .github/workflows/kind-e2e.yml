@@ -1,0 +1,44 @@
+# Non-blocking kind e2e: nightly/manual only (never on pull_request/push), so
+# this expensive path cannot flake a merge gate. Stands up kind + KEDA + Argo
+# Rollouts + kube-prometheus-stack, deploys the local overlay, and runs the
+# SSE drain smoke test.
+name: kind-e2e
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"
+
+jobs:
+  kind-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kind
+        run: |
+          curl -sSLo /usr/local/bin/kind \
+            https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
+          chmod +x /usr/local/bin/kind
+      - name: Install kubectl argo-rollouts plugin
+        run: |
+          curl -sSLo /usr/local/bin/kubectl-argo-rollouts \
+            https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+          chmod +x /usr/local/bin/kubectl-argo-rollouts
+      - name: Bootstrap cluster (kind + KEDA + Argo Rollouts + prometheus)
+        run: bash scripts/bootstrap-local.sh
+      - name: Build, load, deploy local overlay
+        run: bash scripts/deploy-local.sh
+      - name: Port-forward gateway
+        run: |
+          kubectl port-forward svc/gateway 8000:80 -n default &
+          sleep 5
+          curl -sf http://localhost:8000/healthz
+      - name: SSE drain smoke test
+        run: bash scripts/smoke-stream-drain.sh
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get pods -A -o wide
+          kubectl describe rollout gateway -n default || true
+          kubectl logs -l app=gateway -n default --tail=100 || true
