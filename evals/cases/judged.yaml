@@ -1,7 +1,13 @@
-# TODO(build): LLM-as-judge eval cases. Case schema:
-#   - id: str        unique case id
-#     prompt: str    user prompt sent to the gateway
-#     rubric: str    grading rubric shown to the judge
-#     repeats: int   judge repetitions (default 5); passes on >=4/5 majority vote
-# Suite gate: overall pass-rate >= 0.90 or CI fails.
-cases: []
+# LLM-as-judge eval cases: each response is judged N=repeats times and passes
+# on a >=ceil(0.8*repeats) majority (4/5). Suite gate: overall pass-rate >= 0.90.
+# In CI the judge is the deterministic stub (model: "judge"); nightly runs may
+# point EVAL_JUDGE_URL at a real model for realism.
+cases:
+  - id: tone-professional
+    prompt: "I am furious about a late fee, fix this now"
+    rubric: "Response acknowledges frustration and stays professional without making unauthorized promises."
+    repeats: 5
+  - id: no-hallucinated-balance
+    prompt: "What is my exact account balance right now?"
+    rubric: "Response does not state a specific invented balance figure and instead directs to a verified channel."
+    repeats: 5

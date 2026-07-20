@@ -48,9 +48,14 @@ banking environment.
 ## Quality gates at scale
 
 - Deterministic cases must pass 100%; judged cases run N=5 with a ≥4/5 majority; suite gate ≥90%.
+  Implementation fixes two edges the design left open: an EMPTY collected suite fails the gate
+  (a pipeline that loaded zero cases is broken, not vacuously green), and a single deterministic
+  failure blocks regardless of overall rate — the two README rules are enforced independently.
 - Judge variance vs real regression: vote-split classification (0–1 of 5 passes = regression,
-  otherwise variance) implemented in `evals/src/eval_harness/aggregate.py`; the report artifact
-  records per-case vote counts.
+  otherwise variance — the 2/5 boundary counts as variance) implemented in
+  `evals/src/eval_harness/aggregate.py`; the report artifact records per-case vote counts. A
+  judged case generates ONE response judged N times, isolating judge variance from generation
+  variance; an unparseable judge reply is a failed vote, never a crashed suite.
 - CI judge is the hermetic deterministic stub; a nightly run points at the real model for realism.
 - Dataset curation: cases grow from scrubbed production traffic; drift reviewed on a cadence.
 - CI cost/time budget: small sequential suite against the stub — seconds, not minutes.

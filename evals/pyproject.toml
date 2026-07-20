@@ -8,6 +8,7 @@ dependencies = [
     "httpx",
     "pyyaml",
     "pydantic",
+    "jsonschema",
 ]
 
 [build-system]

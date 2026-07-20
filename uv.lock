@@ -347,6 +347,7 @@ version = "0.1.0"
 source = { editable = "evals" }
 dependencies = [
     { name = "httpx" },
+    { name = "jsonschema" },
     { name = "pydantic" },
     { name = "pytest" },
     { name = "pyyaml" },
@@ -355,6 +356,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "httpx" },
+    { name = "jsonschema" },
     { name = "pydantic" },
     { name = "pytest" },
     { name = "pyyaml" },
