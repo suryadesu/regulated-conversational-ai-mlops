@@ -1,0 +1,9 @@
+# TODO(build): deterministic eval cases. Case schema:
+#   - id: str          unique case id
+#     prompt: str      user prompt sent to the gateway
+#     assertions:      list of deterministic checks, each a {type, ...args} mapping:
+#       - {type: contains, expected: [str, ...]}
+#       - {type: regex, pattern: str}
+#       - {type: json_schema, schema: {...}}
+# Deterministic cases must pass 100% or CI fails.
+cases: []

@@ -1,0 +1,7 @@
+# TODO(build): LLM-as-judge eval cases. Case schema:
+#   - id: str        unique case id
+#     prompt: str    user prompt sent to the gateway
+#     rubric: str    grading rubric shown to the judge
+#     repeats: int   judge repetitions (default 5); passes on >=4/5 majority vote
+# Suite gate: overall pass-rate >= 0.90 or CI fails.
+cases: []
