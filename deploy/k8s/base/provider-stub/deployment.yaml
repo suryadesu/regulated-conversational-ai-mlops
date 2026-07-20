@@ -1,4 +1,4 @@
-# TODO(build): Deployment for the deterministic provider stub (port 8080, /__faults control endpoint).
+# Deterministic provider stub (port 8080, POST /__faults fault-injection control).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,4 +15,22 @@ spec:
     spec:
       containers:
         - name: provider-stub
-          image: provider-stub
+          image: provider-stub  # overlay/CD pins the immutable sha tag
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi

@@ -1,6 +1,9 @@
-# TODO(build): KEDA ScaledObject on request queue depth (prod: vllm:num_requests_waiting;
-#   local: llama.cpp metrics equivalent — verify name at build time; fallback gateway in-flight gauge).
-#   minReplicaCount 0 + HTTP add-on for scale-to-zero on idle pools (cold start = model load, minutes).
+# KEDA ScaledObject on request queue depth. Uses the README's pre-decided
+# fallback signal: the gateway-side per-upstream in-flight gauge
+# (gateway_upstream_inflight{upstream="model-serving"}) rather than an
+# engine-internal metric name, so the same trigger works for llama.cpp locally
+# and vLLM in prod. minReplicaCount 0 = scale-to-zero for idle pools; cold
+# start is model load (minutes), so prod applies this only off-peak.
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -10,4 +13,9 @@ spec:
     name: model-serving
   minReplicaCount: 0
   maxReplicaCount: 4
-  triggers: []
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://kube-prometheus-stack-prometheus.monitoring:9090
+        query: sum(gateway_upstream_inflight{upstream="model-serving"})
+        threshold: "10"

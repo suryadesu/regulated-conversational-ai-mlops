@@ -1,12 +1,20 @@
-# TODO(build): KEDA ScaledObject, Prometheus scaler on gateway_inflight_requests (~20 per pod).
-#   I/O-bound workload -> concurrency, not CPU, is the saturation signal.
+# KEDA ScaledObject: Prometheus scaler on gateway_inflight_requests, ~20 per pod.
+# The workload is I/O-bound on provider latency -> concurrency, not CPU, is the
+# saturation signal.
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: gateway
 spec:
   scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
     name: gateway
   minReplicaCount: 1
   maxReplicaCount: 10
-  triggers: []
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://kube-prometheus-stack-prometheus.monitoring:9090
+        query: sum(gateway_inflight_requests)
+        threshold: "20"

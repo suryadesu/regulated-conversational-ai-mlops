@@ -1,5 +1,34 @@
-# TODO(build): OpenTelemetry Collector. Final content adds a ConfigMap (OTLP receiver ->
-#   batch processor -> Prometheus + tempo/otlp exporters) and a Service; this file is the Deployment.
+# OpenTelemetry Collector: OTLP gRPC receiver -> batch processor -> Prometheus
+# exporter (scraped by kube-prometheus-stack) + debug exporter. ConfigMap,
+# Deployment, and Service ship together as one multi-document manifest.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+    processors:
+      batch: {}
+    exporters:
+      prometheus:
+        endpoint: 0.0.0.0:8889
+      debug: {}
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [debug]
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [prometheus]
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,6 +43,38 @@ spec:
       labels:
         app: otel-collector
     spec:
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-config
       containers:
         - name: otel-collector
           image: otel/opentelemetry-collector-contrib
+          args: ["--config=/etc/otelcol/config.yaml"]
+          ports:
+            - containerPort: 4317
+            - containerPort: 8889
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+spec:
+  selector:
+    app: otel-collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+    - name: prom-exporter
+      port: 8889
+      targetPort: 8889

@@ -1,5 +1,6 @@
-# TODO(build): prod overlay. Patches: real image registry+sha tags, vLLM image+flags, nvidia.com/gpu
-#   limits, nodeSelector node-pool=gpu, toleration nvidia.com/gpu, real AWS endpoints, PROMPT_VERSION pin.
+# Production overlay: CD pins immutable ghcr.io sha tags via `kustomize edit
+# set image`; vLLM + GPU via patch; no provider-stub (real managed provider or
+# self-hosted serving only).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -12,3 +13,7 @@ patches:
     target:
       kind: Deployment
       name: model-serving
+  - path: patch-prod-env.yaml
+    target:
+      kind: Rollout
+      name: gateway

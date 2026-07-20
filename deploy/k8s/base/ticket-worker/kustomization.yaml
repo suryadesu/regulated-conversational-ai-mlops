@@ -1,6 +1,19 @@
-# TODO(build): ticket-worker base (SQS consumer, no Service).
+# Ticket-worker base (SQS consumer, no Service). The hash-suffixed env
+# ConfigMap pins queue/table names and the shared GATEWAY_* provider settings.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - deployment.yaml
   - scaledobject.yaml
+  - trigger-auth.yaml
+configMapGenerator:
+  - name: ticket-worker-env
+    literals:
+      - WORKER_QUEUE_URL=http://floci:4566/000000000000/escalations
+      - WORKER_ENDPOINT_URL=http://floci:4566
+      - WORKER_IDEMPOTENCY_TABLE=idempotency
+      - WORKER_TICKETS_TABLE=tickets
+      - GATEWAY_PROVIDER=openai_compat
+      - GATEWAY_PROVIDER_BASE_URL=http://model-serving:8000/v1
+      - GATEWAY_PROMPT_NAME=customer-support
+      - GATEWAY_PROMPT_VERSION=v1.0.0

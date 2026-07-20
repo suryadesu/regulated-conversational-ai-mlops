@@ -1,5 +1,14 @@
-# TODO(build): observability base (OTel collector; Grafana dashboard mounted via configMapGenerator at build time).
+# Observability base: OTel collector + the repo-versioned Grafana dashboard
+# shipped as a ConfigMap (kube-prometheus-stack's sidecar imports label
+# grafana_dashboard: "1").
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - otel-collector.yaml
+configMapGenerator:
+  - name: gateway-grafana-dashboard
+    files:
+      - grafana-dashboard.json
+    options:
+      labels:
+        grafana_dashboard: "1"

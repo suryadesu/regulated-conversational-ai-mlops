@@ -1,0 +1,23 @@
+# Production gateway env: Bedrock as the managed provider (no endpoint_url
+# override -> real AWS); per-intent routes may flip GATEWAY_PROVIDER_BASE_URL
+# to http://model-serving:8000/v1 as they migrate to the self-hosted track.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: gateway
+spec:
+  template:
+    spec:
+      containers:
+        - name: gateway
+          env:
+            - name: GATEWAY_PROVIDER
+              value: bedrock
+            - name: GATEWAY_PROMPT_VERSION
+              value: v1.0.0
+            - name: GATEWAY_PROVIDER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-provider-credentials
+                  key: api-key
+                  optional: true

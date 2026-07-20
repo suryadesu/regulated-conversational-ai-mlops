@@ -7,11 +7,26 @@ import uuid
 from fastapi import Request
 from pydantic import BaseModel
 
-from gateway.observability.metrics import estimate_cost_usd, record_completion, track_inflight
+from gateway.observability.metrics import (
+    estimate_cost_usd,
+    record_completion,
+    track_inflight,
+    track_upstream_inflight,
+)
 from gateway.prompts.loader import render_system_prompt
 from gateway.providers.base import Message
 from gateway.providers.errors import ProviderTimeout
 from gateway.providers.retry import with_retries
+
+
+def upstream_label(settings) -> str:
+    """Host label for the per-upstream in-flight gauge (KEDA model-serving signal)."""
+    if settings.provider == "openai_compat":
+        from urllib.parse import urlparse
+
+        return urlparse(settings.provider_base_url).hostname or "openai_compat"
+    return "bedrock"
+
 
 ROUTE = "/v1/chat/completions"
 
@@ -56,7 +71,7 @@ async def chat_completions(request: ChatRequest, http_request: Request) -> ChatR
     settings = state.settings
     messages = build_messages(request, http_request)
     start = time.monotonic()
-    with track_inflight(ROUTE):
+    with track_inflight(ROUTE), track_upstream_inflight(upstream_label(settings)):
         try:
             async with asyncio.timeout(settings.total_timeout_s):
                 result = await with_retries(

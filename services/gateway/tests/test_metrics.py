@@ -66,3 +66,18 @@ def test_track_inflight_gauge_round_trip() -> None:
     with m.track_inflight("chat"):
         assert gauge._value.get() == baseline + 1
     assert gauge._value.get() == baseline
+
+
+def test_canary_probe_gauge_exists_and_settable() -> None:
+    m.CANARY_PROBE_SUCCESS.set(1.0)
+    assert m.CANARY_PROBE_SUCCESS._value.get() == 1.0
+    m.CANARY_PROBE_SUCCESS.set(0.0)
+    assert m.CANARY_PROBE_SUCCESS._value.get() == 0.0
+
+
+def test_track_upstream_inflight_round_trip() -> None:
+    gauge = m.UPSTREAM_INFLIGHT.labels(upstream="model-serving")
+    baseline = gauge._value.get()
+    with m.track_upstream_inflight("model-serving"):
+        assert gauge._value.get() == baseline + 1
+    assert gauge._value.get() == baseline

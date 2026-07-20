@@ -1,4 +1,7 @@
-# TODO(build): gateway base; add configMapGenerator mounting prompts/<name>/<PROMPT_VERSION>.yaml (hash-suffixed).
+# Gateway base. The hash-suffixed gateway-env ConfigMap pins PROMPT_VERSION:
+# changing the pin changes the ConfigMap name, which changes the pod template,
+# so a prompt change rides the identical canary path as a code change. The
+# versioned prompt files themselves ship inside the image (no `latest` exists).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -7,3 +10,11 @@ resources:
   - analysis-template.yaml
   - scaledobject.yaml
   - canary-prober-job.yaml
+configMapGenerator:
+  - name: gateway-env
+    literals:
+      - GATEWAY_PROVIDER=openai_compat
+      - GATEWAY_PROVIDER_BASE_URL=http://model-serving:8000/v1
+      - GATEWAY_PROMPT_NAME=customer-support
+      - GATEWAY_PROMPT_VERSION=v1.0.0
+      - GATEWAY_OTLP_ENDPOINT=http://otel-collector:4317

@@ -8,12 +8,13 @@ from collections.abc import AsyncIterator
 from fastapi import Request
 from sse_starlette.sse import EventSourceResponse
 
-from gateway.api.chat import ROUTE, ChatRequest, build_messages
+from gateway.api.chat import ROUTE, ChatRequest, build_messages, upstream_label
 from gateway.observability.metrics import (
     TTFT,
     estimate_cost_usd,
     record_completion,
     track_inflight,
+    track_upstream_inflight,
 )
 from gateway.providers.base import CompletionChunk
 
@@ -67,7 +68,7 @@ async def chat_completions_stream(
                 deltas.append(chunk.delta)
                 yield chunk
 
-        with track_inflight(ROUTE):
+        with track_inflight(ROUTE), track_upstream_inflight(upstream_label(settings)):
             async with state.drain.track_request():
                 async for frame in sse_event_generator(counted(), request_id, model):
                     yield frame

@@ -1,5 +1,4 @@
-# TODO(build): patch gateway env for local: PROVIDER=openai_compat, PROVIDER_BASE_URL=provider-stub,
-#   AWS endpoints -> floci http://localhost:4566, GATEWAY_PROMPT_VERSION pin.
+# Local gateway env: the deterministic provider-stub is the managed provider.
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
@@ -10,5 +9,9 @@ spec:
       containers:
         - name: gateway
           env:
+            - name: GATEWAY_PROVIDER
+              value: openai_compat
+            - name: GATEWAY_PROVIDER_BASE_URL
+              value: http://provider-stub:8080/v1
             - name: GATEWAY_PROMPT_VERSION
               value: v1.0.0

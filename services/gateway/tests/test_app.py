@@ -106,3 +106,13 @@ def test_metrics_endpoint_mounted(client: TestClient) -> None:
     r = client.get("/metrics/")
     assert r.status_code == 200
     assert "gateway_tokens_total" in r.text
+
+
+def test_canary_probe_result_endpoint_sets_gauge(client: TestClient) -> None:
+    from gateway.observability.metrics import CANARY_PROBE_SUCCESS
+
+    r = client.post("/internal/canary-probe-result", json={"success": True})
+    assert r.status_code == 200
+    assert CANARY_PROBE_SUCCESS._value.get() == 1.0
+    client.post("/internal/canary-probe-result", json={"success": False})
+    assert CANARY_PROBE_SUCCESS._value.get() == 0.0

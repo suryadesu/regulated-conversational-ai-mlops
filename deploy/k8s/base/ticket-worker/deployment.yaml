@@ -1,6 +1,5 @@
-# TODO(build): Deployment for the SQS ticket worker. Final content:
-#   - env: SQS queue URL, DynamoDB table names, provider config, floci/real endpoints.
-#   - no ports; graceful shutdown finishes the in-flight message before exit.
+# SQS ticket worker: no ports; the poll loop finishes the in-flight message
+# before exit (SIGTERM -> asyncio.run teardown after the current iteration).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,6 +14,18 @@ spec:
       labels:
         app: ticket-worker
     spec:
+      terminationGracePeriodSeconds: 90
       containers:
         - name: ticket-worker
-          image: ticket-worker
+          image: ticket-worker  # overlay/CD pins the immutable sha tag
+          envFrom:
+            - configMapRef:
+                name: ticket-worker-env
+            - secretRef:
+                name: aws-credentials
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi

@@ -8,8 +8,9 @@ CLUSTER_NAME="${KIND_CLUSTER_NAME:-regulated-conv-ai}"
 docker build -t gateway:local -f services/gateway/Dockerfile .
 docker build -t provider-stub:local -f services/provider-stub/Dockerfile .
 docker build -t ticket-worker:local -f services/ticket-worker/Dockerfile .
+docker build -t evals:local -f evals/Dockerfile .
 
-kind load docker-image gateway:local provider-stub:local ticket-worker:local \
+kind load docker-image gateway:local provider-stub:local ticket-worker:local evals:local \
   --name "$CLUSTER_NAME"
 
 kubectl apply -k deploy/k8s/overlays/local

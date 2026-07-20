@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from gateway.api.chat import ChatRequest, chat_completions
-from gateway.api.health import healthz, readyz
+from gateway.api.health import canary_probe_result, healthz, readyz
 from gateway.api.stream import chat_completions_stream
 from gateway.config import Settings, get_settings
 from gateway.draining import DrainState
@@ -46,6 +46,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.post("/v1/chat/completions", response_model=None)(_chat_dispatcher)
     app.get("/healthz")(healthz)
     app.get("/readyz")(readyz)
+    app.post("/internal/canary-probe-result")(canary_probe_result)
     app.add_exception_handler(ProviderError, _provider_error_handler)
     app.add_exception_handler(RequestValidationError, _provider_error_handler)
     return app

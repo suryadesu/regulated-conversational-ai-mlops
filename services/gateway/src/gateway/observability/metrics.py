@@ -35,6 +35,15 @@ INFLIGHT = Gauge(
     "Requests currently in flight (KEDA scaling signal).",
     ["route"],
 )
+CANARY_PROBE_SUCCESS = Gauge(
+    "gateway_canary_probe_success",
+    "1 when the last canary-prober eval run passed, 0 otherwise (Rollout analysis signal).",
+)
+UPSTREAM_INFLIGHT = Gauge(
+    "gateway_upstream_inflight",
+    "Provider calls currently in flight per upstream (KEDA model-serving queue-depth fallback).",
+    ["upstream"],
+)
 
 
 def setup_metrics(app: FastAPI) -> None:
@@ -140,6 +149,31 @@ def track_inflight(route: str) -> AbstractContextManager[None]:
     @contextmanager
     def scope() -> Iterator[None]:
         gauge = INFLIGHT.labels(route=route)
+        gauge.inc()
+        try:
+            yield
+        finally:
+            gauge.dec()
+
+    return scope()
+
+
+def track_upstream_inflight(upstream: str) -> AbstractContextManager[None]:
+    """Return a context manager tracking in-flight provider calls per upstream.
+
+    This gauge is the README's pre-decided fallback scaling signal for
+    model-serving (instead of engine-internal queue metrics).
+
+    Args:
+        upstream: str — upstream host label (e.g. "model-serving", "provider-stub").
+
+    Returns:
+        AbstractContextManager[None] — scope whose exit decrements the gauge.
+    """
+
+    @contextmanager
+    def scope() -> Iterator[None]:
+        gauge = UPSTREAM_INFLIGHT.labels(upstream=upstream)
         gauge.inc()
         try:
             yield
