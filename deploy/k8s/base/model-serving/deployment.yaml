@@ -1,0 +1,21 @@
+# TODO(build): OpenAI-compatible serving Deployment. Final content:
+#   - initContainer downloads pinned GGUF (URL+sha) into an emptyDir.
+#   - container: ghcr.io/ggml-org/llama.cpp:server, --metrics on, readiness/liveness /health.
+#   - prod overlay swaps image->vLLM and adds nvidia.com/gpu limits, nodeSelector, toleration.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-serving
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: model-serving
+  template:
+    metadata:
+      labels:
+        app: model-serving
+    spec:
+      containers:
+        - name: server
+          image: ghcr.io/ggml-org/llama.cpp:server

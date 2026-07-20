@@ -1,0 +1,25 @@
+# TODO(build): Argo Rollouts canary for the gateway. Final content:
+#   - strategy.canary.steps: setWeight 20 -> pause{analysis} -> setWeight 50 -> analysis -> 100%.
+#   - analysis: templateName gateway-canary (error rate <2%, p95 within SLO, canary_probe_success).
+#   - pod: /healthz liveness (200 while draining), /readyz readiness (503 while draining),
+#     terminationGracePeriodSeconds 180, lifecycle.preStop sleep 10, PROMPT_VERSION from ConfigMap.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: gateway
+  labels:
+    app: gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      terminationGracePeriodSeconds: 180
+      containers:
+        - name: gateway
+          image: gateway  # overlay pins the immutable sha tag

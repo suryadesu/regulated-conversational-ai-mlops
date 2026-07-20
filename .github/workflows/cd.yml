@@ -1,0 +1,25 @@
+# TODO(build): main pipeline. Build + push GHCR with immutable sha tags, then rolling deploy via
+#   Argo Rollouts. Promotion references the sha tag; latest is never deployed. Steps echo TODO for now.
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and push images (immutable sha tag)
+        run: |
+          echo "TODO(build): docker build + push ghcr.io/OWNER/SVC tagged sha-$GITHUB_SHA (plus semver on tag)"
+      - name: Deploy (Argo Rollouts canary)
+        run: |
+          echo "TODO(build): kustomize set image to the sha tag, then kubectl argo rollouts promote through canary steps"

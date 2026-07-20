@@ -1,0 +1,16 @@
+[tool.uv.workspace]
+members = ["services/*", "evals"]
+
+[dependency-groups]
+dev = ["ruff", "pytest"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["services/gateway/src", "services/provider-stub/src", "services/ticket-worker/src", "evals/src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,13 @@
+# TODO(build): Job that replays golden prompts against the canary Service, runs the deterministic
+#   eval assertions, and emits canary_probe_success for the AnalysisTemplate (evals as runtime signal).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gateway-canary-prober
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: prober
+          image: evals  # overlay pins the immutable sha tag

@@ -1,0 +1,31 @@
+# TODO(build): PR gate. Real steps (lint, test) run today; build + eval-gate echo TODO until implemented.
+#   Final build step: docker build gateway/provider-stub/ticket-worker, then compose up floci + stub.
+#   Final eval-gate step: uv run python -m eval_harness.gate (blocks merge on pass-rate < 0.90).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "scaffold/**"
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Sync workspace
+        run: uv sync
+      - name: Lint (ruff)
+        run: uv run ruff check .
+      - name: Test (pytest)
+        run: uv run pytest -q
+      - name: Build images
+        run: |
+          echo "TODO(build): docker build services, then compose up floci + provider-stub"
+      - name: Eval gate (blocking)
+        run: |
+          echo "TODO(build): uv run python -m eval_harness.gate (fails CI on pass-rate below 0.90)"

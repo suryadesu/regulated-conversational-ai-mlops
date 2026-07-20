@@ -1,0 +1,23 @@
+# TODO(build): GPU serving patch. Final content:
+#   - image -> vLLM; args: --gpu-memory-utilization 0.90, --max-num-seqs, --tensor-parallel-size, --quantization awq.
+#   - resources.limits: nvidia.com/gpu: 1; nodeSelector node-pool=gpu.
+#   - tolerations: key nvidia.com/gpu=present:NoSchedule. Requires the NVIDIA device plugin.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-serving
+spec:
+  template:
+    spec:
+      nodeSelector:
+        node-pool: gpu
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Equal
+          value: present
+          effect: NoSchedule
+      containers:
+        - name: server
+          resources:
+            limits:
+              nvidia.com/gpu: 1

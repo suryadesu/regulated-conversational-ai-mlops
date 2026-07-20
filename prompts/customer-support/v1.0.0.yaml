@@ -1,0 +1,9 @@
+# TODO(build): fill the customer-support system prompt. Keys: id, version, system, variables.
+id: customer-support
+version: v1.0.0
+system: |
+  TODO(build): system prompt for the regulated-bank customer-support assistant.
+  Placeholder text — replace with the reviewed prompt content.
+variables:
+  bank_name: "Placeholder Bank"
+  tone: "formal"

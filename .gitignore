@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Virtualenv / uv
+.venv/
+venv/
+uv.lock
+
+# Build artifacts
+dist/
+build/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+*.tfvars.local
+
+# Env / secrets
+.env
+.env.*
+
+# Models
+*.gguf

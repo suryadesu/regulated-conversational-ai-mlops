@@ -1,0 +1,7 @@
+{
+  "__comment": "TODO(build): Grafana dashboard. Panels per route: request duration + TTFT histograms, gateway_tokens_total, gateway_cost_usd_total, gateway_inflight_requests.",
+  "title": "Gateway \u2014 latency, TTFT, tokens, cost",
+  "schemaVersion": 39,
+  "editable": true,
+  "panels": []
+}

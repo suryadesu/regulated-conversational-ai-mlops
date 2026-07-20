@@ -1,0 +1,39 @@
+# TODO(build): full local stack. Enumerated final content:
+#   - floci: image floci/floci:latest, 4566:4566, dummy AWS creds,
+#     SERVICES=sqs,dynamodb,secretsmanager,ecr,bedrock; healthcheck on floci health endpoint.
+#   - provider-stub: build ./services/provider-stub, 8080; deterministic OpenAI-compatible responses
+#     with POST /__faults fault injection.
+#   - profile "selfhosted": llama-cpp server (ghcr.io/ggml-org/llama.cpp:server) with pinned
+#     Qwen2.5-0.5B-Instruct Q4 GGUF (fetched by URL+sha into a volume), 8081, --metrics on.
+name: regulated-conv-ai-mlops
+
+services:
+  floci:
+    image: floci/floci:latest
+    ports:
+      - "4566:4566"
+    environment:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      SERVICES: "sqs,dynamodb,secretsmanager,ecr,bedrock"
+
+  provider-stub:
+    build: ./services/provider-stub
+    ports:
+      - "8080:8080"
+    environment:
+      PROVIDER_STUB_PORT: "8080"
+
+  llama-cpp:
+    profiles:
+      - selfhosted
+    image: ghcr.io/ggml-org/llama.cpp:server
+    ports:
+      - "8081:8080"
+    command:
+      - "-m"
+      - "/models/qwen2.5-0.5b-instruct-q4_k_m.gguf"
+      - "--host"
+      - "0.0.0.0"
+      - "--metrics"
