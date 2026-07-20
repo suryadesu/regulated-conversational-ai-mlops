@@ -1,6 +1,7 @@
 """AWS Bedrock provider adapter using the Converse / ConverseStream APIs (boto3)."""
 
 import asyncio
+import os
 from collections.abc import AsyncIterator
 
 import boto3
@@ -26,15 +27,20 @@ class BedrockProvider:
     def __init__(self, model_id: str, endpoint_url: str | None, timeout_s: float) -> None:
         """Create a Bedrock Converse client.
 
+        The region falls back to us-east-1 when no AWS region is configured, so
+        construction never depends on ambient AWS CLI config (CI runners have none).
+
         Args:
             model_id: str — Bedrock model identifier for Converse.
             endpoint_url: str | None — floci endpoint locally; None uses real AWS.
             timeout_s: float — per-attempt request timeout in seconds.
         """
         self.model_id = model_id
+        region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
         self._client = boto3.client(
             "bedrock-runtime",
             endpoint_url=endpoint_url,
+            region_name=region,
             config=botocore.config.Config(read_timeout=timeout_s, connect_timeout=timeout_s),
         )
 
