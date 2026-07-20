@@ -14,3 +14,4 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "services/gateway/tests", "services/provider-stub/tests", "services/ticket-worker/tests", "evals/tests"]
+markers = ["e2e: spawns real subprocesses, slower"]
