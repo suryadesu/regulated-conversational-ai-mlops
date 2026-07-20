@@ -1,8 +1,6 @@
 """Liveness and readiness endpoints."""
 
-from fastapi import Response
-
-from gateway.draining import DrainState
+from fastapi import Request, Response
 
 
 async def healthz() -> dict[str, str]:
@@ -11,16 +9,21 @@ async def healthz() -> dict[str, str]:
     Returns:
         dict[str, str] — a static status document.
     """
-    raise NotImplementedError
+    return {"status": "ok"}
 
 
-async def readyz(drain: DrainState) -> Response:
+async def readyz(http_request: Request) -> Response:
     """Readiness probe: 200 when serving, 503 once draining so the pod leaves endpoints.
 
     Args:
-        drain: DrainState — shared drain-state handle.
+        http_request: Request — carries app.state.drain (shared drain-state handle).
 
     Returns:
         Response — 200 or 503 depending on drain state.
     """
-    raise NotImplementedError
+    drain = http_request.app.state.drain
+    if drain.is_draining:
+        return Response(
+            status_code=503, content='{"status":"draining"}', media_type="application/json"
+        )
+    return Response(status_code=200, content='{"status":"ready"}', media_type="application/json")
