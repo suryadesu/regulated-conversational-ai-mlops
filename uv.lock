@@ -858,12 +858,16 @@ version = "0.1.0"
 source = { editable = "services/provider-stub" }
 dependencies = [
     { name = "fastapi" },
+    { name = "pydantic" },
+    { name = "sse-starlette" },
     { name = "uvicorn" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "fastapi" },
+    { name = "pydantic" },
+    { name = "sse-starlette" },
     { name = "uvicorn" },
 ]
 

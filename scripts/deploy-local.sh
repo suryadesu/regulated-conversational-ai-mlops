@@ -1,8 +1,20 @@
 #!/usr/bin/env bash
-# TODO(build): implement. Enumerated final content:
-#   docker build gateway/provider-stub/ticket-worker; kind load the images.
-#   kustomize build deploy/k8s/overlays/local | kubectl apply -f -.
-#   wait for rollouts to become healthy.
+# Build the three service images, load them into kind, and apply the local
+# kustomize overlay; wait for the gateway Rollout to become healthy.
 set -euo pipefail
 
-echo "TODO(build): deploy-local.sh not implemented"
+CLUSTER_NAME="${KIND_CLUSTER_NAME:-regulated-conv-ai}"
+
+docker build -t gateway:local -f services/gateway/Dockerfile .
+docker build -t provider-stub:local -f services/provider-stub/Dockerfile .
+docker build -t ticket-worker:local -f services/ticket-worker/Dockerfile .
+
+kind load docker-image gateway:local provider-stub:local ticket-worker:local \
+  --name "$CLUSTER_NAME"
+
+kubectl apply -k deploy/k8s/overlays/local
+
+kubectl argo rollouts status gateway -n default --timeout 180s \
+  || kubectl get rollout gateway -n default -o wide
+
+echo "local overlay applied."

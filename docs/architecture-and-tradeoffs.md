@@ -42,6 +42,11 @@ banking environment.
   Poison messages are deliberately left undeleted (no manual DLQ code): SQS visibility timeout +
   `maxReceiveCount=3` redrive is the whole failure path, and a redelivered already-processed event
   hits the DynamoDB conditional-put claim and is acked without re-executing the side effect.
+- **Container builds caught what the shared venv masked.** The uv workspace's single `.venv` let
+  provider-stub import `sse-starlette` it never declared (it arrived transitively via the gateway),
+  and let the worker run under pytest without a `python -m` entry guard; both surfaced only when
+  `uv sync --frozen --no-dev --no-editable --package <name>` built each service's isolated image.
+  Per-service images are therefore also the dependency-honesty check.
 - **Deliberately kept simple**: regex-only PII floor (NER is the production follow-up), single
   region, no Pushgateway (the canary prober reports through a gateway-internal endpoint instead).
 

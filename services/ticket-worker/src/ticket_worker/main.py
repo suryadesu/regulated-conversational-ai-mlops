@@ -95,3 +95,7 @@ async def run_poll_loop(
             else:
                 # Already processed: ack without re-executing the side effect.
                 await asyncio.to_thread(consumer.delete, message["ReceiptHandle"])
+
+
+if __name__ == "__main__":
+    main()

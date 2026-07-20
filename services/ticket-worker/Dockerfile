@@ -1,7 +1,17 @@
-# TODO(build): image for the SQS ticket worker. Enumerated final content:
-#   - FROM python:3.12-slim; install uv; `uv sync --frozen --package ticket-worker`; nonroot USER.
-#   - No exposed port (queue consumer).
-#   - CMD ["python", "-m", "ticket_worker.main"].
-FROM python:3.12-slim
+# Multi-stage uv build; root workspace context required so uv can resolve the
+# whole workspace (ticket-worker depends on the gateway member package).
+FROM python:3.12-slim AS builder
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 WORKDIR /app
-CMD ["echo", "TODO(build): ticket-worker image not implemented"]
+COPY . .
+RUN uv sync --frozen --no-dev --no-editable --package ticket-worker
+
+FROM python:3.12-slim
+RUN useradd -m nonroot
+ENV PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH"
+WORKDIR /app
+COPY --from=builder /app/.venv /app/.venv
+# The worker loads the same versioned prompt store as the gateway.
+COPY --from=builder /app/prompts /app/prompts
+USER nonroot
+CMD ["python", "-m", "ticket_worker.main"]
