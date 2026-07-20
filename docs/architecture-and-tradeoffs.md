@@ -36,6 +36,12 @@ banking environment.
   histogram carries a `code` label so the canary analysis can compute a 5xx error rate; an
   unknown model or missing price file degrades to $0 cost rather than failing requests —
   cost is a signal, not a gate.
+- **Ticket worker reuses the gateway's contract as a real dependency.** `ticket-worker` depends on
+  the `gateway` workspace package and imports `ProviderClient`/`PromptTemplate`/`Message` directly —
+  "same ProviderClient, same versioned prompt" is enforced by the import graph, not by convention.
+  Poison messages are deliberately left undeleted (no manual DLQ code): SQS visibility timeout +
+  `maxReceiveCount=3` redrive is the whole failure path, and a redelivered already-processed event
+  hits the DynamoDB conditional-put claim and is acked without re-executing the side effect.
 - **Deliberately kept simple**: regex-only PII floor (NER is the production follow-up), single
   region, no Pushgateway (the canary prober reports through a gateway-internal endpoint instead).
 

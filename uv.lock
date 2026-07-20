@@ -1315,6 +1315,7 @@ version = "0.1.0"
 source = { editable = "services/ticket-worker" }
 dependencies = [
     { name = "boto3" },
+    { name = "gateway" },
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pyyaml" },
@@ -1323,6 +1324,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "boto3" },
+    { name = "gateway", editable = "services/gateway" },
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pyyaml" },
