@@ -8,7 +8,6 @@ __pycache__/
 # Virtualenv / uv
 .venv/
 venv/
-uv.lock
 
 # Build artifacts
 dist/
