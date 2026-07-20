@@ -12,6 +12,10 @@ class Settings(BaseSettings):
 
     provider: str = "openai_compat"  # adapter selector: "openai_compat" | "bedrock"
     provider_base_url: str = "http://provider-stub:8080/v1"  # base URL for openai_compat adapter
+    provider_api_key: str = ""  # bearer token for openai_compat; from Secrets Manager in prod
+    default_model: str = "qwen2.5-0.5b-instruct"  # model requested when the client names none
+    max_tokens: int = 512  # generation budget enforced gateway-side
+    temperature: float = 0.2  # sampling temperature enforced gateway-side
     bedrock_model_id: str = "anthropic.claude-3-haiku-20240307-v1:0"  # Bedrock Converse model id
     bedrock_endpoint_url: str | None = None  # floci endpoint locally; None uses real AWS
     request_timeout_s: float = 10.0  # per-attempt provider timeout in seconds
@@ -26,9 +30,12 @@ class Settings(BaseSettings):
 
 
 def get_settings() -> Settings:
-    """Build and return the process-wide settings singleton.
+    """Build and return the settings, reading the environment at call time.
+
+    Deliberately not cached and never called at import time, preserving the
+    import-without-side-effects invariant and letting tests override env vars.
 
     Returns:
         Settings — configuration parsed from environment and defaults.
     """
-    raise NotImplementedError
+    return Settings()

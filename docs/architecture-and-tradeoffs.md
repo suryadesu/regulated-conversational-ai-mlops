@@ -32,7 +32,10 @@ banking environment.
   under saturation) and queue depth for the batch engine (utilization can't distinguish "busy"
   from "falling behind").
 - **Observability**: five Prometheus metrics (tokens, duration, TTFT, cost, in-flight) with a
-  repo-versioned price table so $/1k-token assumptions are code-reviewable.
+  repo-versioned price table so $/1k-token assumptions are code-reviewable. The duration
+  histogram carries a `code` label so the canary analysis can compute a 5xx error rate; an
+  unknown model or missing price file degrades to $0 cost rather than failing requests —
+  cost is a signal, not a gate.
 - **Deliberately kept simple**: regex-only PII floor (NER is the production follow-up), single
   region, no Pushgateway (the canary prober reports through a gateway-internal endpoint instead).
 
