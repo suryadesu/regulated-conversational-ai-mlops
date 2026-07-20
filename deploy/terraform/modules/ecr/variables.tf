@@ -1,1 +1,2 @@
-# TODO(build): repository_names, image_tag_mutability.
+# No inputs: repository names and tag immutability are fixed literals
+# (self-contained module by design).

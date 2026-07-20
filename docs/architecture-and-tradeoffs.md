@@ -47,8 +47,20 @@ banking environment.
   and let the worker run under pytest without a `python -m` entry guard; both surfaced only when
   `uv sync --frozen --no-dev --no-editable --package <name>` built each service's isolated image.
   Per-service images are therefore also the dependency-honesty check.
+- **floci's service emulations differ in depth — plan around it.** SQS, DynamoDB, and Secrets
+  Manager apply cleanly via Terraform against floci; ECR emulation spawns a real `registry:2`
+  container through the Docker engine, which floci-inside-compose cannot reach (no socket), so
+  repo creation hangs. The `ecr` module is therefore gated behind `enable_ecr` (false locally,
+  true for real AWS) — the same count-gating mechanism as the validate/plan-only `iam`/`eks`
+  modules.
 - **Deliberately kept simple**: regex-only PII floor (NER is the production follow-up), single
-  region, no Pushgateway (the canary prober reports through a gateway-internal endpoint instead).
+  region, no Pushgateway (the canary prober POSTs its eval outcome to a gateway-internal
+  endpoint that sets `gateway_canary_probe_success`); prompt files ship inside the image while
+  the hash-suffixed env ConfigMap pins the version — a pin change still changes the pod template
+  and rides the canary path, without kustomize load-restriction workarounds to mount files from
+  outside the kustomization root; model-serving KEDA scaling uses the gateway-side
+  `gateway_upstream_inflight{upstream}` gauge (the README's pre-decided fallback), so one
+  trigger works for llama.cpp locally and vLLM in production alike.
 
 ## Quality gates at scale
 
