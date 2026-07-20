@@ -378,17 +378,15 @@ application code differs from production only in the `endpoint_url` it is handed
 │   └── ticket-worker/         # SQS-driven ticket-drafting consumer
 ├── evals/                     # pytest eval harness + case schemas (the CI gate)
 ├── prompts/                   # versioned prompt store (prompts/<name>/vX.Y.Z.yaml)
+├── docs/                      # architecture-and-tradeoffs.md (decisions + production evolution)
 ├── deploy/
 │   ├── k8s/                   # kustomize bases + local/prod overlays
 │   └── terraform/             # sqs, dynamodb, ecr, secrets, iam, eks modules
-├── .github/workflows/         # ci.yml (PR gate) + cd.yml (build/push/deploy)
+├── .github/workflows/         # ci.yml (PR gate) + cd.yml (build/push/render) + kind-e2e.yml (nightly)
 └── scripts/                   # bootstrap-local, seed-aws, deploy-local, publish-test-event, smoke-stream-drain
 ```
 
 ## Quickstart
-
-*(Build in progress on `scaffold/project-structure`; steps below are the intended
-developer workflow.)*
 
 ```bash
 make up            # start floci + provider-stub via docker compose
