@@ -1,0 +1,19 @@
+# TODO(build): OpenTelemetry Collector. Final content adds a ConfigMap (OTLP receiver ->
+#   batch processor -> Prometheus + tempo/otlp exporters) and a Service; this file is the Deployment.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib

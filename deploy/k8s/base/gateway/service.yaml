@@ -1,0 +1,12 @@
+# TODO(build): ClusterIP Service fronting the gateway pods on port 80 -> 8000.
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+spec:
+  selector:
+    app: gateway
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000

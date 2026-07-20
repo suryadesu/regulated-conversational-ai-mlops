@@ -1,0 +1,20 @@
+# TODO(build): Deployment for the SQS ticket worker. Final content:
+#   - env: SQS queue URL, DynamoDB table names, provider config, floci/real endpoints.
+#   - no ports; graceful shutdown finishes the in-flight message before exit.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ticket-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ticket-worker
+  template:
+    metadata:
+      labels:
+        app: ticket-worker
+    spec:
+      containers:
+        - name: ticket-worker
+          image: ticket-worker

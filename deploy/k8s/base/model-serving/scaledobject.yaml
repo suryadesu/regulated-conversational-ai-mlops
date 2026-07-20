@@ -1,0 +1,13 @@
+# TODO(build): KEDA ScaledObject on request queue depth (prod: vllm:num_requests_waiting;
+#   local: llama.cpp metrics equivalent — verify name at build time; fallback gateway in-flight gauge).
+#   minReplicaCount 0 + HTTP add-on for scale-to-zero on idle pools (cold start = model load, minutes).
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: model-serving
+spec:
+  scaleTargetRef:
+    name: model-serving
+  minReplicaCount: 0
+  maxReplicaCount: 4
+  triggers: []

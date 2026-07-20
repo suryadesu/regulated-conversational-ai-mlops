@@ -1,0 +1,18 @@
+# TODO(build): Deployment for the deterministic provider stub (port 8080, /__faults control endpoint).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: provider-stub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: provider-stub
+  template:
+    metadata:
+      labels:
+        app: provider-stub
+    spec:
+      containers:
+        - name: provider-stub
+          image: provider-stub

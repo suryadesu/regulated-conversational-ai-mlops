@@ -1,0 +1,14 @@
+# TODO(build): prod overlay. Patches: real image registry+sha tags, vLLM image+flags, nvidia.com/gpu
+#   limits, nodeSelector node-pool=gpu, toleration nvidia.com/gpu, real AWS endpoints, PROMPT_VERSION pin.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base/gateway
+  - ../../base/ticket-worker
+  - ../../base/model-serving
+  - ../../base/observability
+patches:
+  - path: patch-model-serving-gpu.yaml
+    target:
+      kind: Deployment
+      name: model-serving

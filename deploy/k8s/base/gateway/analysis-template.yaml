@@ -1,0 +1,10 @@
+# TODO(build): AnalysisTemplate queried by the canary. Final metrics:
+#   - error-rate: Prometheus query < 2%.
+#   - p95-latency: histogram_quantile within SLO.
+#   - canary-probe-success: gauge from canary-prober-job replaying golden prompts >= threshold.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: gateway-canary
+spec:
+  metrics: []

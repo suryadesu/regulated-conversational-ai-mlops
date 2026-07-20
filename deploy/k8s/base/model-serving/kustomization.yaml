@@ -1,0 +1,7 @@
+# TODO(build): model-serving base (Track 2 OpenAI-compatible server; local llama.cpp, prod vLLM via overlay).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - deployment.yaml
+  - service.yaml
+  - scaledobject.yaml

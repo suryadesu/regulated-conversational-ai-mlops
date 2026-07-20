@@ -1,0 +1,15 @@
+# TODO(build): local overlay. Patches: image tags (kind-loaded), floci endpoint env
+#   (http://localhost:4566), PROMPT_VERSION pin, provider-stub as the managed provider.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base/gateway
+  - ../../base/provider-stub
+  - ../../base/ticket-worker
+  - ../../base/model-serving
+  - ../../base/observability
+patches:
+  - path: patch-local-env.yaml
+    target:
+      kind: Rollout
+      name: gateway

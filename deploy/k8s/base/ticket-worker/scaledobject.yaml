@@ -1,0 +1,11 @@
+# TODO(build): KEDA ScaledObject, AWS SQS scaler on ApproximateNumberOfMessages of the main queue.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: ticket-worker
+spec:
+  scaleTargetRef:
+    name: ticket-worker
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  triggers: []
