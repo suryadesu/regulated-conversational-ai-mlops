@@ -14,6 +14,10 @@ banking environment.
 - **Deterministic stub over floci's Bedrock stub for the primary local path.** Evals and retry
   tests need deterministic content and injectable failures (429/5xx/latency via `POST /__faults`);
   floci's Bedrock endpoint is still exercised by the `bedrock` adapter as a smoke path.
+  Stub behaviors fixed during implementation: `fail_next` takes precedence over probabilistic
+  fault bands so tests can force exact failure counts; a canned-response cache miss falls back to
+  a hash-tagged echo (`[stub:<sha256[:16]>] Acknowledged: ...`) instead of raising, so every
+  prompt has a stable, assertable reply without pre-authoring.
 - **SSE graceful drain choreography**: `preStop: sleep 10` (endpoint-slice propagation) →
   readiness flips 503 while liveness stays 200 → in-flight counter bounds drain at 160 s →
   `terminationGracePeriodSeconds: 180`. Invariant: a rolling deploy never cuts an open stream.
