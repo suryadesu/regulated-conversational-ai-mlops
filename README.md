@@ -386,16 +386,99 @@ application code differs from production only in the `endpoint_url` it is handed
 └── scripts/                   # bootstrap-local, seed-aws, deploy-local, publish-test-event, smoke-stream-drain
 ```
 
-## Quickstart
+## Quickstart & testing
+
+Prerequisites: Docker and [`uv`](https://docs.astral.sh/uv/). The Kubernetes paths also
+need `kind`, `kubectl`, `helm`, `kubeconform`, and the `kubectl argo rollouts` plugin.
+On Windows, run the `.sh` scripts under Git Bash, and set env vars with
+`$env:NAME="value"` (PowerShell) rather than the `NAME=value cmd` prefix shown below.
 
 ```bash
-make up            # start floci + provider-stub via docker compose
+make up            # start floci + provider-stub + gateway via docker compose
 make seed          # create SQS queues+DLQ, DynamoDB tables, Secrets Manager secret in floci
 make kind-up       # create kind cluster; install KEDA, Argo Rollouts, kube-prometheus-stack
 make deploy-local  # build/load images into kind, apply the local kustomize overlay
 make eval          # run the eval suite against the gateway (the CI gate, locally)
 make smoke-drain   # open an SSE stream, trigger a rollout, assert the stream completes
 ```
+
+Fast path — unit, integration, and native-process e2e, no Docker required:
+
+```bash
+uv run pytest -q       # full suite incl. e2e (spawns real uvicorn subprocesses)
+uv run ruff check .    # lint
+```
+
+### Testing — Track 1 (managed LLM gateway)
+
+The gateway fronts the deterministic provider-stub, the local stand-in for a managed
+provider (Bedrock / OpenAI-compatible). Start the stack, then exercise each capability:
+
+```bash
+make up && bash scripts/seed-aws.sh    # stack healthy; SQS/DynamoDB/Secrets seeded in floci
+
+# unary completion (deterministic stub echo)
+curl -s -X POST http://localhost:8000/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"user","content":"I need help with my account balance"}]}'
+
+# SSE streaming — ends in `data: [DONE]`
+curl -sN -X POST http://localhost:8000/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"user","content":"stream me"}],"stream":true}'
+
+# resilience — inject upstream failures, watch retries exhaust into a 502 envelope
+curl -s -X POST http://localhost:8080/__faults -d '{"fail_next":100}' -H 'Content-Type: application/json'
+curl -s -o /dev/null -w '%{http_code}\n' -X POST http://localhost:8000/v1/chat/completions \
+  -H 'Content-Type: application/json' -d '{"messages":[{"role":"user","content":"x"}]}'   # 502
+curl -s -X POST http://localhost:8080/__faults -d '{}' -H 'Content-Type: application/json'   # reset
+
+# observability + the blocking eval gate, run locally
+curl -s http://localhost:8000/metrics/ | grep gateway_
+EVAL_GATEWAY_URL=http://localhost:8000 EVAL_JUDGE_URL=http://localhost:8080 make eval
+
+# event-driven ticket worker — publish an escalation, confirm a DynamoDB ticket
+docker compose --profile worker up -d ticket-worker
+bash scripts/publish-test-event.sh
+AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1 \
+  aws --endpoint-url http://localhost:4566 dynamodb scan --table-name tickets --select COUNT
+```
+
+### Testing — Track 2 (self-hosted model serving)
+
+An OpenAI-compatible llama.cpp CPU server running the pinned Qwen2.5-0.5B GGUF. Compose
+doesn't fetch the model, so download it once and mount it (the Kubernetes path fetches
+it via an initContainer):
+
+```bash
+mkdir -p models
+curl -fSL https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf \
+  -o models/qwen2.5-0.5b-instruct-q4_k_m.gguf
+
+docker run -d --name llama-cpp -p 8081:8080 -v "$PWD/models:/models" \
+  ghcr.io/ggml-org/llama.cpp:server \
+  -m /models/qwen2.5-0.5b-instruct-q4_k_m.gguf --host 0.0.0.0 --port 8080 --metrics
+
+curl -sf http://localhost:8081/health          # {"status":"ok"}
+curl -s -X POST http://localhost:8081/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"qwen2.5-0.5b-instruct","messages":[{"role":"user","content":"Summarize a late-fee dispute in one sentence."}]}'
+```
+
+**Bridge the tracks** — the same gateway serves the self-hosted backend with only a
+base-URL change, so Track 1's resilience, evals, and observability apply unchanged:
+
+```bash
+GATEWAY_PROVIDER=openai_compat GATEWAY_PROVIDER_BASE_URL=http://127.0.0.1:8081/v1 \
+  uv run uvicorn gateway.main:create_app --factory --port 18000 &
+curl -s -X POST http://127.0.0.1:18000/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"user","content":"I want to dispute a charge"}]}'
+```
+
+GPU/vLLM serving is authored and schema-validated in `deploy/k8s/overlays/prod`
+(`kubectl kustomize deploy/k8s/overlays/prod | kubeconform ...`) but not run locally
+(no GPU); llama.cpp on CPU is the local analog.
 
 ## What I'd do next
 
