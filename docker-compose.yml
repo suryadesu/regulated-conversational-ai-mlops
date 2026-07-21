@@ -71,6 +71,8 @@ services:
     image: ghcr.io/ggml-org/llama.cpp:server
     ports:
       - "8081:8080"
+    volumes:
+      - ./models:/models
     command:
       - "-m"
       - "/models/qwen2.5-0.5b-instruct-q4_k_m.gguf"
