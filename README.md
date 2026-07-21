@@ -388,10 +388,13 @@ application code differs from production only in the `endpoint_url` it is handed
 
 ## Quickstart & testing
 
-Prerequisites: Docker and [`uv`](https://docs.astral.sh/uv/). The Kubernetes paths also
-need `kind`, `kubectl`, `helm`, `kubeconform`, and the `kubectl argo rollouts` plugin.
-On Windows, run the `.sh` scripts under Git Bash, and set env vars with
-`$env:NAME="value"` (PowerShell) rather than the `NAME=value cmd` prefix shown below.
+Prerequisites: Docker, [`uv`](https://docs.astral.sh/uv/), GNU `make`, `curl`, and the
+[AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+(used by the seed/publish scripts against local floci — dummy `test` credentials, no AWS
+account). The Kubernetes paths also need `kind`, `kubectl`, `helm`, `kubeconform`, and
+the `kubectl argo rollouts` plugin. Every snippet below is bash and runs unchanged on
+Linux and macOS; on Windows run them in **Git Bash** (ships with Git for Windows) and
+install make once (`scoop install make` or `choco install make`).
 
 ```bash
 make up            # start floci + provider-stub + gateway via docker compose
@@ -446,18 +449,16 @@ AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1 \
 
 ### Testing — Track 2 (self-hosted model serving)
 
-An OpenAI-compatible llama.cpp CPU server running the pinned Qwen2.5-0.5B GGUF. Compose
-doesn't fetch the model, so download it once and mount it (the Kubernetes path fetches
-it via an initContainer):
+An OpenAI-compatible llama.cpp CPU server running the pinned Qwen2.5-0.5B GGUF.
+Download the model once into `./models/` — the compose `selfhosted` profile mounts it
+(the Kubernetes path instead fetches it via an initContainer):
 
 ```bash
 mkdir -p models
 curl -fSL https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf \
   -o models/qwen2.5-0.5b-instruct-q4_k_m.gguf
 
-docker run -d --name llama-cpp -p 8081:8080 -v "$PWD/models:/models" \
-  ghcr.io/ggml-org/llama.cpp:server \
-  -m /models/qwen2.5-0.5b-instruct-q4_k_m.gguf --host 0.0.0.0 --port 8080 --metrics
+docker compose --profile selfhosted up -d llama-cpp
 
 curl -sf http://localhost:8081/health          # {"status":"ok"}
 curl -s -X POST http://localhost:8081/v1/chat/completions \
