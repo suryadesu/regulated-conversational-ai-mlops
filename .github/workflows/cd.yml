@@ -53,9 +53,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install kustomize
+        # Runner images preinstall a kustomize at /usr/local/bin and the official
+        # installer refuses to overwrite; install the pinned version into RUNNER_TEMP
+        # and prepend it to PATH so the pin always wins.
         run: |
           curl -sSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" \
-            | bash -s -- 5.4.3 /usr/local/bin
+            | bash -s -- 5.4.3 "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
       - name: Pin immutable sha tags into the prod overlay
         working-directory: deploy/k8s/overlays/prod
         run: |
