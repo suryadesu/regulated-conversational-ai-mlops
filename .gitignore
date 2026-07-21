@@ -26,3 +26,6 @@ build/
 
 # Models
 *.gguf
+
+# Local run artifacts
+eval-report*.json
