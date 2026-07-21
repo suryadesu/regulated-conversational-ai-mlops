@@ -188,7 +188,7 @@ raise idle timeouts, scale on in-flight (already the signal), add connection-awa
 fallback + queueing. (7) Cold start — scale-up that takes minutes is too slow for a 100x step
 change; pre-warmed pools and cache-backed model loads are the only mitigation.
 
-## What you cut
+## What was cut that I do next
 
 Deprioritized for time, in the order I would implement them in production:
 
