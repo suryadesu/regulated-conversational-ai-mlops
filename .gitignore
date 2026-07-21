@@ -8,7 +8,6 @@ __pycache__/
 # Virtualenv / uv
 .venv/
 venv/
-uv.lock
 
 # Build artifacts
 dist/
@@ -27,3 +26,6 @@ build/
 
 # Models
 *.gguf
+
+# Local run artifacts
+eval-report*.json

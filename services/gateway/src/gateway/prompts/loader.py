@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import yaml
 from pydantic import BaseModel
 
 
@@ -17,6 +18,9 @@ class PromptTemplate(BaseModel):
 def load_prompt(prompt_dir: Path, name: str, version: str) -> PromptTemplate:
     """Load and validate a pinned prompt version from the on-disk prompt store.
 
+    A missing pinned prompt is a startup-fatal misconfiguration: the
+    FileNotFoundError is deliberately uncaught.
+
     Args:
         prompt_dir: Path — root directory of the versioned prompt store.
         name: str — prompt family name (subdirectory under prompt_dir).
@@ -25,11 +29,18 @@ def load_prompt(prompt_dir: Path, name: str, version: str) -> PromptTemplate:
     Returns:
         PromptTemplate — the parsed, validated template.
     """
-    raise NotImplementedError
+    path = prompt_dir / name / f"{version}.yaml"
+    if not path.is_file():
+        raise FileNotFoundError(f"no prompt {name}/{version} under {prompt_dir}")
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return PromptTemplate(**data)
 
 
 def render_system_prompt(template: PromptTemplate, variables: dict[str, str]) -> str:
     """Render the template system prompt, with runtime variables overriding template defaults.
+
+    An unfilled placeholder raises KeyError uncaught — a silently broken system
+    prompt in a regulated setting is worse than a startup crash.
 
     Args:
         template: PromptTemplate — the loaded prompt template.
@@ -38,4 +49,5 @@ def render_system_prompt(template: PromptTemplate, variables: dict[str, str]) ->
     Returns:
         str — the fully rendered system prompt.
     """
-    raise NotImplementedError
+    merged = {**template.variables, **variables}
+    return template.system.format_map(merged)

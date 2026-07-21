@@ -1,1 +1,2 @@
-# TODO(build): queue names, visibility_timeout_s, message_retention_s, max_receive_count.
+# No inputs: queue names, visibility timeout, retention, and maxReceiveCount
+# are fixed literals in main.tf (self-contained module by design).

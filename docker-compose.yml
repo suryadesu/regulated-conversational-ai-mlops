@@ -1,10 +1,9 @@
-# TODO(build): full local stack. Enumerated final content:
-#   - floci: image floci/floci:latest, 4566:4566, dummy AWS creds,
-#     SERVICES=sqs,dynamodb,secretsmanager,ecr,bedrock; healthcheck on floci health endpoint.
-#   - provider-stub: build ./services/provider-stub, 8080; deterministic OpenAI-compatible responses
-#     with POST /__faults fault injection.
-#   - profile "selfhosted": llama-cpp server (ghcr.io/ggml-org/llama.cpp:server) with pinned
-#     Qwen2.5-0.5B-Instruct Q4 GGUF (fetched by URL+sha into a volume), 8081, --metrics on.
+# Full local stack: floci (AWS emulation), provider-stub, gateway; profile
+# "worker" adds the SQS ticket-worker (start it after `make seed` created the
+# queue); profile "selfhosted" adds the llama.cpp CPU server for Track 2.
+# floci's native image ships no shell/curl, so readiness is checked host-side
+# (make targets / CI wait on http://localhost:4566) instead of a container
+# healthcheck.
 name: regulated-conv-ai-mlops
 
 services:
@@ -19,11 +18,52 @@ services:
       SERVICES: "sqs,dynamodb,secretsmanager,ecr,bedrock"
 
   provider-stub:
-    build: ./services/provider-stub
+    build:
+      context: .
+      dockerfile: services/provider-stub/Dockerfile
     ports:
       - "8080:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    ports:
+      - "8000:8000"
     environment:
-      PROVIDER_STUB_PORT: "8080"
+      GATEWAY_PROVIDER: openai_compat
+      GATEWAY_PROVIDER_BASE_URL: "http://provider-stub:8080/v1"
+    depends_on:
+      provider-stub:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  ticket-worker:
+    profiles:
+      - worker
+    build:
+      context: .
+      dockerfile: services/ticket-worker/Dockerfile
+    environment:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      WORKER_QUEUE_URL: "${WORKER_QUEUE_URL:-http://floci:4566/000000000000/escalations}"
+      WORKER_ENDPOINT_URL: "http://floci:4566"
+      GATEWAY_PROVIDER: openai_compat
+      GATEWAY_PROVIDER_BASE_URL: "http://provider-stub:8080/v1"
+    depends_on:
+      - floci
+      - provider-stub
 
   llama-cpp:
     profiles:

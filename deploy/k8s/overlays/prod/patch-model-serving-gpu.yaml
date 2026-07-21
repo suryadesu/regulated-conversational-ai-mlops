@@ -1,7 +1,9 @@
-# TODO(build): GPU serving patch. Final content:
-#   - image -> vLLM; args: --gpu-memory-utilization 0.90, --max-num-seqs, --tensor-parallel-size, --quantization awq.
-#   - resources.limits: nvidia.com/gpu: 1; nodeSelector node-pool=gpu.
-#   - tolerations: key nvidia.com/gpu=present:NoSchedule. Requires the NVIDIA device plugin.
+# GPU serving patch: vLLM replaces llama.cpp; one GPU per pod on the tainted
+# GPU node group. Requires the NVIDIA device plugin (EKS addon/DaemonSet) to
+# publish the nvidia.com/gpu extended resource, or pods stay Pending.
+# vLLM levers: --gpu-memory-utilization (KV-cache headroom vs OOM),
+# --max-num-seqs (admission concurrency), --tensor-parallel-size (shard models
+# larger than one GPU), --quantization awq (capacity vs quality).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,8 +18,23 @@ spec:
           operator: Equal
           value: present
           effect: NoSchedule
+      initContainers: []
       containers:
         - name: server
+          image: vllm/vllm-openai:latest
+          args:
+            - "--model"
+            - "Qwen/Qwen2.5-7B-Instruct"
+            - "--port"
+            - "8000"
+            - "--gpu-memory-utilization"
+            - "0.90"
+            - "--max-num-seqs"
+            - "64"
+            - "--tensor-parallel-size"
+            - "1"
+            - "--quantization"
+            - "awq"
           resources:
             limits:
               nvidia.com/gpu: 1

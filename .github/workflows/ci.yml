@@ -1,6 +1,7 @@
-# TODO(build): PR gate. Real steps (lint, test) run today; build + eval-gate echo TODO until implemented.
-#   Final build step: docker build gateway/provider-stub/ticket-worker, then compose up floci + stub.
-#   Final eval-gate step: uv run python -m eval_harness.gate (blocks merge on pass-rate < 0.90).
+# PR gate: lint + full test suite, then in parallel — compose-stack integration
+# (blocking eval gate + worker E2E against floci), k8s manifest validation
+# (kustomize render + kubeconform), and terraform validate + real apply against
+# a job-scoped floci service container.
 name: CI
 
 on:
@@ -8,7 +9,6 @@ on:
   push:
     branches:
       - main
-      - "scaffold/**"
 
 jobs:
   lint-test:
@@ -18,14 +18,118 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Sync workspace
-        run: uv sync
+        run: uv sync --frozen --group dev
       - name: Lint (ruff)
         run: uv run ruff check .
-      - name: Test (pytest)
+      - name: Test (pytest, includes native-process e2e)
         run: uv run pytest -q
-      - name: Build images
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: [lint-test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Sync workspace
+        run: uv sync --frozen --group dev
+      - name: Build service images
+        run: docker compose build gateway provider-stub ticket-worker
+      - name: Start stack (floci + provider-stub + gateway)
+        run: docker compose up -d floci provider-stub gateway
+      - name: Wait for health
         run: |
-          echo "TODO(build): docker build services, then compose up floci + provider-stub"
-      - name: Eval gate (blocking)
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/healthz && curl -sf http://localhost:4566 >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs
+          exit 1
+      - name: Seed floci (queues, tables, secret)
+        run: bash scripts/seed-aws.sh
+      - name: Eval gate (BLOCKING)
+        env:
+          EVAL_GATEWAY_URL: http://localhost:8000
+          EVAL_JUDGE_URL: http://localhost:8080
+          EVAL_REPORT_PATH: eval-report.json
+        run: uv run python -m eval_harness.gate
+      - name: Upload eval report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: eval-report.json
+      - name: Worker end-to-end (SQS -> draft -> DynamoDB)
+        env:
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_DEFAULT_REGION: us-east-1
         run: |
-          echo "TODO(build): uv run python -m eval_harness.gate (fails CI on pass-rate below 0.90)"
+          docker compose --profile worker up -d ticket-worker
+          bash scripts/publish-test-event.sh
+          for i in $(seq 1 30); do
+            COUNT=$(aws --endpoint-url http://localhost:4566 dynamodb scan \
+              --table-name tickets --select COUNT --query Count --output text)
+            if [ "$COUNT" -ge 1 ]; then
+              echo "ticket persisted (count=$COUNT)"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs ticket-worker
+          exit 1
+      - name: Teardown
+        if: always()
+        run: docker compose --profile worker down -v
+
+  k8s-validate:
+    runs-on: ubuntu-latest
+    needs: [lint-test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kubeconform
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz \
+            | tar xz -C /usr/local/bin kubeconform
+      - name: Render and validate local overlay
+        run: |
+          kubectl kustomize deploy/k8s/overlays/local \
+            | kubeconform -summary -ignore-missing-schemas -kubernetes-version 1.29.0 -strict -
+      - name: Render and validate prod overlay
+        run: |
+          kubectl kustomize deploy/k8s/overlays/prod \
+            | kubeconform -summary -ignore-missing-schemas -kubernetes-version 1.29.0 -strict -
+
+  terraform-validate:
+    runs-on: ubuntu-latest
+    needs: [lint-test]
+    services:
+      floci:
+        image: floci/floci:latest
+        ports:
+          - 4566:4566
+        env:
+          SERVICES: "sqs,dynamodb,secretsmanager,ecr,bedrock"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Init
+        run: terraform -chdir=deploy/terraform init -backend=false
+      - name: Format check
+        run: terraform -chdir=deploy/terraform fmt -check -recursive
+      - name: Validate
+        run: terraform -chdir=deploy/terraform validate
+      - name: Apply against floci (sqs, dynamodb, secrets)
+        run: terraform -chdir=deploy/terraform apply -auto-approve -var-file=envs/local.tfvars
+      - name: Verify applied resources
+        env:
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          aws --endpoint-url http://localhost:4566 sqs list-queues --output text | tee queues.txt
+          grep -q escalations queues.txt
+      - name: Destroy
+        run: terraform -chdir=deploy/terraform destroy -auto-approve -var-file=envs/local.tfvars

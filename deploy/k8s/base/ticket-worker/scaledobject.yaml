@@ -1,4 +1,5 @@
-# TODO(build): KEDA ScaledObject, AWS SQS scaler on ApproximateNumberOfMessages of the main queue.
+# KEDA ScaledObject: AWS SQS scaler on ApproximateNumberOfMessages of the main
+# queue. queueLength 5 = target backlog per replica before scaling up.
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -8,4 +9,11 @@ spec:
     name: ticket-worker
   minReplicaCount: 0
   maxReplicaCount: 10
-  triggers: []
+  triggers:
+    - type: aws-sqs-queue
+      authenticationRef:
+        name: ticket-worker-aws
+      metadata:
+        queueURL: http://floci:4566/000000000000/escalations
+        queueLength: "5"
+        awsRegion: us-east-1

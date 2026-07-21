@@ -1,8 +1,6 @@
-# TODO(build): Argo Rollouts canary for the gateway. Final content:
-#   - strategy.canary.steps: setWeight 20 -> pause{analysis} -> setWeight 50 -> analysis -> 100%.
-#   - analysis: templateName gateway-canary (error rate <2%, p95 within SLO, canary_probe_success).
-#   - pod: /healthz liveness (200 while draining), /readyz readiness (503 while draining),
-#     terminationGracePeriodSeconds 180, lifecycle.preStop sleep 10, PROMPT_VERSION from ConfigMap.
+# Argo Rollouts canary for the gateway: 20% -> analysis -> 50% -> analysis -> 100%.
+# Drain choreography: preStop sleep 10 (endpoint propagation), /readyz flips 503 on
+# SIGTERM while /healthz stays 200, terminationGracePeriodSeconds 180 > drain bound 160.
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
@@ -14,6 +12,19 @@ spec:
   selector:
     matchLabels:
       app: gateway
+  strategy:
+    canary:
+      steps:
+        - setWeight: 20
+        - pause: {duration: 60}
+        - analysis:
+            templates:
+              - templateName: gateway-canary
+        - setWeight: 50
+        - analysis:
+            templates:
+              - templateName: gateway-canary
+        - setWeight: 100
   template:
     metadata:
       labels:
@@ -22,4 +33,29 @@ spec:
       terminationGracePeriodSeconds: 180
       containers:
         - name: gateway
-          image: gateway  # overlay pins the immutable sha tag
+          image: gateway  # overlay/CD pins the immutable sha tag
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: gateway-env
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8000
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            periodSeconds: 10
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "10"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi

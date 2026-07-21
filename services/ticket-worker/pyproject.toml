@@ -8,7 +8,11 @@ dependencies = [
     "pydantic",
     "pyyaml",
     "httpx",
+    "gateway",
 ]
+
+[tool.uv.sources]
+gateway = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

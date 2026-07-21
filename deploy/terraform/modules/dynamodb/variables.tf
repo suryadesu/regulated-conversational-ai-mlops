@@ -1,1 +1,2 @@
-# TODO(build): idempotency_table_name, tickets_table_name, billing_mode.
+# No inputs: table names and schemas are fixed literals shared with the worker
+# code and seed script (self-contained module by design).

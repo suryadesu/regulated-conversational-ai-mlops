@@ -1,14 +1,14 @@
 """Ticket model, drafting via the shared provider contract, and persistence."""
 
-from __future__ import annotations
+import json
+from datetime import UTC, datetime
+from uuid import uuid4
 
-from typing import TYPE_CHECKING
-
+import boto3
 from pydantic import BaseModel
 
-if TYPE_CHECKING:
-    from gateway.prompts.loader import PromptTemplate
-    from gateway.providers.base import ProviderClient
+from gateway.prompts.loader import PromptTemplate, render_system_prompt
+from gateway.providers.base import Message, ProviderClient
 
 
 class Ticket(BaseModel):
@@ -32,7 +32,23 @@ async def draft_ticket(event: dict, provider: ProviderClient, prompt: PromptTemp
     Returns:
         Ticket — the drafted ticket ready to persist.
     """
-    raise NotImplementedError
+    messages = [
+        Message(role="system", content=render_system_prompt(prompt, {})),
+        Message(
+            role="user",
+            content=f"Draft a support ticket for this escalation: {json.dumps(event)}",
+        ),
+    ]
+    result = await provider.complete(
+        messages, model="qwen2.5-0.5b-instruct", max_tokens=512, temperature=0.2
+    )
+    return Ticket(
+        id=str(uuid4()),
+        source_event_id=event.get("event_id", "unknown"),
+        title=event.get("summary", "Escalation")[:80],
+        body=result.content,
+        created_at=datetime.now(UTC).isoformat(),
+    )
 
 
 def persist_ticket(ticket: Ticket, table_name: str, endpoint_url: str | None) -> None:
@@ -40,7 +56,9 @@ def persist_ticket(ticket: Ticket, table_name: str, endpoint_url: str | None) ->
 
     Args:
         ticket: Ticket — the ticket to store.
-        table_name: str — DynamoDB tickets table name.
+        table_name: str — DynamoDB tickets table name (partition key "id").
         endpoint_url: str | None — floci endpoint locally; None uses real AWS.
     """
-    raise NotImplementedError
+    boto3.resource("dynamodb", endpoint_url=endpoint_url, region_name="us-east-1").Table(
+        table_name
+    ).put_item(Item=ticket.model_dump())

@@ -1,1 +1,14 @@
-# TODO(build): idempotency_table_name, tickets_table_name, table_arns.
+output "idempotency_table_name" {
+  value = aws_dynamodb_table.idempotency.name
+}
+
+output "tickets_table_name" {
+  value = aws_dynamodb_table.tickets.name
+}
+
+output "table_arns" {
+  value = {
+    idempotency = aws_dynamodb_table.idempotency.arn
+    tickets     = aws_dynamodb_table.tickets.arn
+  }
+}

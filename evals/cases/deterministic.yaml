@@ -1,9 +1,15 @@
-# TODO(build): deterministic eval cases. Case schema:
-#   - id: str          unique case id
-#     prompt: str      user prompt sent to the gateway
-#     assertions:      list of deterministic checks, each a {type, ...args} mapping:
-#       - {type: contains, expected: [str, ...]}
-#       - {type: regex, pattern: str}
-#       - {type: json_schema, schema: {...}}
-# Deterministic cases must pass 100% or CI fails.
-cases: []
+# Deterministic eval cases: exact substring / regex assertions against the
+# provider-stub's stable replies. Gate rule: 100% of these must pass.
+cases:
+  - id: greeting-contains
+    prompt: "I need help with my account balance"
+    assertions:
+      - {type: contains, expected: ["Acknowledged", "account balance"]}
+  - id: stub-tag-regex
+    prompt: "What is your refund policy?"
+    assertions:
+      - {type: regex, pattern: "\\[stub:[0-9a-f]{16}\\]"}
+  - id: policy-question-contains
+    prompt: "What are your business hours?"
+    assertions:
+      - {type: contains, expected: ["business hours"]}

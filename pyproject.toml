@@ -2,7 +2,7 @@
 members = ["services/*", "evals"]
 
 [dependency-groups]
-dev = ["ruff", "pytest"]
+dev = ["ruff", "pytest", "anyio", "moto[sqs,dynamodb,secretsmanager]", "jsonschema"]
 
 [tool.ruff]
 line-length = 100
@@ -13,4 +13,5 @@ src = ["services/gateway/src", "services/provider-stub/src", "services/ticket-wo
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "services/gateway/tests", "services/provider-stub/tests", "services/ticket-worker/tests", "evals/tests"]
+markers = ["e2e: spawns real subprocesses, slower"]

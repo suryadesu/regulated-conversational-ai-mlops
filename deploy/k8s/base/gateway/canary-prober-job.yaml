@@ -1,13 +1,34 @@
-# TODO(build): Job that replays golden prompts against the canary Service, runs the deterministic
-#   eval assertions, and emits canary_probe_success for the AnalysisTemplate (evals as runtime signal).
+# Canary prober: replays the golden eval prompts against the gateway Service and
+# reports the outcome to POST /internal/canary-probe-result, which sets the
+# gateway_canary_probe_success gauge the AnalysisTemplate reads — the eval suite
+# acting as a runtime quality signal, without a Pushgateway.
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: gateway-canary-prober
 spec:
+  backoffLimit: 1
   template:
     spec:
       restartPolicy: Never
       containers:
         - name: prober
-          image: evals  # overlay pins the immutable sha tag
+          image: evals  # overlay/CD pins the immutable sha tag
+          env:
+            - name: EVAL_GATEWAY_URL
+              value: http://gateway:80
+            - name: EVAL_JUDGE_URL
+              value: http://provider-stub:8080
+            - name: EVAL_REPORT_PATH
+              value: /tmp/eval-report.json
+            - name: CANARY_RESULT_URL
+              value: http://gateway:80/internal/canary-probe-result
+          command:
+            - python
+            - -c
+            - |
+              import os, httpx
+              from eval_harness.gate import main
+              rc = main()
+              httpx.post(os.environ["CANARY_RESULT_URL"], json={"success": rc == 0}, timeout=10)
+              raise SystemExit(rc)

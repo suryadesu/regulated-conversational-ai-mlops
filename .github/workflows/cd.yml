@@ -1,5 +1,8 @@
-# TODO(build): main pipeline. Build + push GHCR with immutable sha tags, then rolling deploy via
-#   Argo Rollouts. Promotion references the sha tag; latest is never deployed. Steps echo TODO for now.
+# Main pipeline: build + push all four images to GHCR with immutable sha tags
+# (plus the semver tag on releases), then render the production manifests with
+# those tags pinned. No live cluster is wired to this repository, so the deploy
+# step publishes the rendered manifests as an artifact for a manual/GitOps apply
+# — stated explicitly rather than left as a silent no-op.
 name: CD
 
 on:
@@ -10,16 +13,63 @@ on:
       - "v*"
 
 jobs:
-  build-push-deploy:
+  build-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix:
+        service: [gateway, provider-stub, ticket-worker, evals]
     steps:
       - uses: actions/checkout@v4
-      - name: Build and push images (immutable sha tag)
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Resolve Dockerfile path
+        id: df
         run: |
-          echo "TODO(build): docker build + push ghcr.io/OWNER/SVC tagged sha-$GITHUB_SHA (plus semver on tag)"
-      - name: Deploy (Argo Rollouts canary)
+          if [ "${{ matrix.service }}" = "evals" ]; then
+            echo "path=evals/Dockerfile" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=services/${{ matrix.service }}/Dockerfile" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build and push (immutable sha tag)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ steps.df.outputs.path }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/${{ matrix.service }}:sha-${{ github.sha }}
+            ${{ startsWith(github.ref, 'refs/tags/v') && format('ghcr.io/{0}/{1}:{2}', github.repository, matrix.service, github.ref_name) || '' }}
+
+  render-deploy:
+    runs-on: ubuntu-latest
+    needs: [build-push]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kustomize
         run: |
-          echo "TODO(build): kustomize set image to the sha tag, then kubectl argo rollouts promote through canary steps"
+          curl -sSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" \
+            | bash -s -- 5.4.3 /usr/local/bin
+      - name: Pin immutable sha tags into the prod overlay
+        working-directory: deploy/k8s/overlays/prod
+        run: |
+          kustomize edit set image \
+            gateway=ghcr.io/${{ github.repository }}/gateway:sha-${{ github.sha }} \
+            provider-stub=ghcr.io/${{ github.repository }}/provider-stub:sha-${{ github.sha }} \
+            ticket-worker=ghcr.io/${{ github.repository }}/ticket-worker:sha-${{ github.sha }} \
+            evals=ghcr.io/${{ github.repository }}/evals:sha-${{ github.sha }}
+      - name: Render production manifests
+        run: kustomize build deploy/k8s/overlays/prod > rendered-prod-manifests.yaml
+      - name: Upload rendered manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-prod-manifests
+          path: rendered-prod-manifests.yaml
+      - name: Deployment note
+        run: echo "::notice::No live cluster is configured — manifests rendered with immutable sha tags and uploaded as an artifact; apply via GitOps or kubectl apply -f."

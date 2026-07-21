@@ -1,0 +1,18 @@
+# Local worker env: floci runs in docker compose on the host; kind pods reach it
+# via host.docker.internal (Docker Desktop). Provider is the in-cluster stub.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ticket-worker
+spec:
+  template:
+    spec:
+      containers:
+        - name: ticket-worker
+          env:
+            - name: WORKER_QUEUE_URL
+              value: http://host.docker.internal:4566/000000000000/escalations
+            - name: WORKER_ENDPOINT_URL
+              value: http://host.docker.internal:4566
+            - name: GATEWAY_PROVIDER_BASE_URL
+              value: http://provider-stub:8080/v1
